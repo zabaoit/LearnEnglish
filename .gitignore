@@ -1,0 +1,51 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Dependencies
+node_modules/
+client/node_modules/
+server/node_modules/
+
+# Builds
+dist/
+client/dist/
+client/dist-ssr/
+server/dist/
+build/
+
+# Environment
+.env
+.env.*
+!.env.example
+server/.env
+server/.env.*
+!server/.env.example
+
+# Local demo persistence
+server/storage/
+
+# Test and tool output
+coverage/
+.nyc_output/
+.vite/
+.cache/
+.parcel-cache/
+.eslintcache
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.bak
+
+# Editors and OS
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db

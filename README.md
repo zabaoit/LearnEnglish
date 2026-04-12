@@ -1,4 +1,4 @@
-# LearnFlow English MVP
+# LearnEnglish MVP
 
 Ứng dụng học tiếng Anh theo flow:
 
@@ -34,6 +34,8 @@ mysql -u root -p english_learning < server/database/schema.sql
 
 Sau đó điền `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` trong `server/.env`.
 
+Trong demo mode, nội dung admin/import sẽ được lưu vào `server/storage/demo-data.json` để không mất khi refresh hoặc khi `nodemon` restart server. Muốn reset dữ liệu mẫu thì xóa file này rồi chạy lại backend.
+
 ## Tính năng đã dựng
 
 - Đăng ký, đăng nhập, quên mật khẩu, hồ sơ, placement test endpoint
@@ -57,7 +59,7 @@ Sau đó điền `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` trong `server/.e
 Trong demo mode, đăng nhập ở tab `Admin` bằng:
 
 ```text
-admin@learnflow.local
+admin@learnenglish.local
 admin123
 ```
 

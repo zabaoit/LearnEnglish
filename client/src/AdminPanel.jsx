@@ -42,6 +42,11 @@ const adminResources = [
     custom: true,
   },
   {
+    id: 'content-quality',
+    label: 'Content Quality',
+    custom: true,
+  },
+  {
     id: 'levels',
     label: 'Cấp độ',
     titleField: 'code',
@@ -198,6 +203,8 @@ function AdminPanel({ authForm, authMessage, authMode, onLearningContentUpdated,
   const [bulkMessage, setBulkMessage] = useState('')
   const [adminTopics, setAdminTopics] = useState(topics)
   const [adminLevels, setAdminLevels] = useState(levels)
+  const [qualityDashboard, setQualityDashboard] = useState(null)
+  const [qualityMessage, setQualityMessage] = useState('')
 
   const resource = useMemo(
     () => adminResources.find((item) => item.id === activeResource) || adminResources[0],
@@ -238,11 +245,26 @@ function AdminPanel({ authForm, authMessage, authMode, onLearningContentUpdated,
     }
   }, [])
 
+  const refreshQualityDashboard = useCallback(async () => {
+    try {
+      const data = await apiRequest('/admin/quality-dashboard')
+      setQualityDashboard(data.dashboard)
+      setQualityMessage('')
+    } catch (error) {
+      setQualityMessage(error.message)
+    }
+  }, [])
+
   useEffect(() => {
     if (!isAdmin) return
     refreshSummary()
     refreshBulkTaxonomy()
   }, [isAdmin, refreshSummary, refreshBulkTaxonomy])
+
+  useEffect(() => {
+    if (!isAdmin || activeResource !== 'content-quality') return
+    refreshQualityDashboard()
+  }, [activeResource, isAdmin, refreshQualityDashboard])
 
   useEffect(() => {
     if (adminTopics.length && !adminTopics.some((topic) => topic.slug === bulkTopic)) {
@@ -466,6 +488,8 @@ function AdminPanel({ authForm, authMessage, authMode, onLearningContentUpdated,
               setBulkText={setBulkText}
               setBulkTopic={setBulkTopic}
             />
+          ) : resource.id === 'content-quality' ? (
+            <ContentQualityDashboard dashboard={qualityDashboard} message={qualityMessage} refresh={refreshQualityDashboard} />
           ) : (
             <>
               <ResourceEditor
@@ -633,6 +657,112 @@ function ImportGuideNotice() {
   )
 }
 
+function ContentQualityDashboard({ dashboard, message, refresh }) {
+  const summary = dashboard?.summary || {}
+
+  return (
+    <section className="space-y-6">
+      <div className="rounded-lg border border-zinc-200 bg-white p-5">
+        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+          <div>
+            <p className="text-sm font-semibold text-emerald-700">Content Quality Dashboard</p>
+            <h2 className="mt-2 text-2xl font-bold">Insight nội dung học tập</h2>
+            <p className="mt-2 text-sm text-zinc-600">Tổng hợp từ quizHistory, practiceHistory, reviewQueue và từ khó theo tài khoản.</p>
+          </div>
+          <button className="rounded-md border border-zinc-300 px-4 py-2 font-semibold" onClick={refresh} type="button">
+            Làm mới
+          </button>
+        </div>
+        {message && <p className="mt-3 rounded-md bg-amber-100 px-3 py-2 text-sm font-semibold text-amber-900">{message}</p>}
+        <div className="mt-5 grid gap-3 md:grid-cols-4">
+          <QualityMetric label="Tài khoản có progress" value={summary.progressUsers || 0} />
+          <QualityMetric label="Lượt quiz" value={summary.quizAttempts || 0} />
+          <QualityMetric label="Lượt luyện nghe/đọc" value={summary.practiceAttempts || 0} />
+          <QualityMetric label="Tracking bỏ dở" value={summary.trackedAbandonment ? 'Có' : 'Chưa'} />
+        </div>
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-2">
+        <QualityList
+          empty="Chưa có bài nào có tỷ lệ đúng thấp."
+          items={dashboard?.lowAccuracyLessons || []}
+          renderItem={(item) => (
+            <>
+              <p className="font-bold">{item.title}</p>
+              <p className="text-sm text-zinc-600">{item.type} · {item.topicSlug} · {item.level} · {item.averageScore}% đúng · {item.attempts} lượt</p>
+            </>
+          )}
+          title="Bài tỷ lệ đúng thấp"
+        />
+        <QualityList
+          empty="Chưa có dữ liệu quiz đủ rõ."
+          items={dashboard?.quizQuality || []}
+          renderItem={(item) => (
+            <>
+              <p className="font-bold">{item.title}</p>
+              <p className="text-sm text-zinc-600">{item.topicSlug} · {item.level} · {item.averageScore}% · {item.difficulty} · {item.attempts} lượt</p>
+            </>
+          )}
+          title="Quiz quá dễ / quá khó"
+        />
+        <QualityList
+          empty="Chưa có từ nào bị đánh dấu khó."
+          items={dashboard?.difficultWords || []}
+          renderItem={(item) => (
+            <>
+              <p className="font-bold">{item.term}</p>
+              <p className="text-sm text-zinc-600">{item.meaningVi} · {item.topicSlug} · {item.level} · {item.count} tín hiệu khó</p>
+            </>
+          )}
+          title="Từ hay bị difficult"
+        />
+        <QualityList
+          empty="Chưa có dữ liệu chủ đề."
+          items={dashboard?.underStudiedTopics || []}
+          renderItem={(item) => (
+            <>
+              <p className="font-bold">{item.label}</p>
+              <p className="text-sm text-zinc-600">{item.studyCount} tín hiệu học · {item.wordCount} từ trong kho</p>
+            </>
+          )}
+          title="Chủ đề ít được học"
+        />
+      </div>
+
+      <div className="rounded-lg border border-zinc-200 bg-white p-5">
+        <p className="text-sm font-semibold text-rose-700">Bài bị bỏ dở</p>
+        <h2 className="mt-2 text-2xl font-bold">Cần thêm tracking start/abandon</h2>
+        <p className="mt-2 text-zinc-700">{dashboard?.abandonment?.note || 'Chưa có dữ liệu bỏ dở.'}</p>
+      </div>
+    </section>
+  )
+}
+
+function QualityMetric({ label, value }) {
+  return (
+    <div className="rounded-md border border-zinc-200 bg-[#FBFDFC] p-3">
+      <p className="text-sm font-semibold text-zinc-600">{label}</p>
+      <p className="mt-1 text-2xl font-bold">{value}</p>
+    </div>
+  )
+}
+
+function QualityList({ empty, items, renderItem, title }) {
+  return (
+    <div className="rounded-lg border border-zinc-200 bg-white p-5">
+      <p className="text-sm font-semibold text-emerald-700">{title}</p>
+      <div className="mt-5 space-y-3">
+        {items.length === 0 && <p className="rounded-md bg-[#FBFDFC] px-3 py-2 text-sm text-zinc-600">{empty}</p>}
+        {items.map((item, index) => (
+          <div className="border-b border-zinc-100 pb-3" key={item.id || item.topicSlug || index}>
+            {renderItem(item)}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function BulkVocabularyPreview({ result }) {
   if (!result) {
     return (
@@ -701,7 +831,7 @@ function BulkVocabularyPreview({ result }) {
 function AdminGate({ authForm, authMessage, authMode, setAuthMode, submitAuth, updateAuthForm }) {
   function useDemoAdmin() {
     setAuthMode('login')
-    updateAuthForm('email', 'admin@learnenglish.local')
+    updateAuthForm('email', 'admin@englishhub.local')
     updateAuthForm('password', 'admin123')
   }
 
@@ -709,7 +839,7 @@ function AdminGate({ authForm, authMessage, authMode, setAuthMode, submitAuth, u
     <div className="rounded-lg border border-zinc-200 bg-white p-5">
       <p className="text-sm font-semibold text-emerald-700">Role admin</p>
       <h2 className="mt-2 text-2xl font-bold">Đăng nhập để quản lý</h2>
-      <p className="mt-2 text-sm text-zinc-600">Đăng nhập admin để mở màn Nhập từ vựng hàng loạt. Tài khoản demo: admin@learnenglish.local / admin123</p>
+      <p className="mt-2 text-sm text-zinc-600">Đăng nhập admin để mở màn Nhập từ vựng hàng loạt. Tài khoản demo: admin@englishhub.local / admin123</p>
       <form className="mt-5 space-y-3" onSubmit={submitAuth}>
         <div className="flex gap-2">
           <button className={`rounded-md px-3 py-2 font-semibold ${authMode === 'register' ? 'bg-emerald-700 text-white' : 'border border-zinc-300'}`} type="button" onClick={() => setAuthMode('register')}>

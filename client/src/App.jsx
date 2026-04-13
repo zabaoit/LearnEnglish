@@ -441,7 +441,7 @@ function App() {
     return (
       <div className="grid min-h-screen place-items-center bg-[#F7FAF8] px-4 text-zinc-900">
         <div className="rounded-lg border border-zinc-200 bg-white p-6 text-center">
-          <p className="text-sm font-semibold text-emerald-700">LearnEnglish</p>
+          <p className="text-sm font-semibold text-emerald-700">EnglishHub</p>
           <h1 className="mt-2 text-2xl font-bold">Đang kiểm tra phiên đăng nhập</h1>
         </div>
       </div>
@@ -467,7 +467,7 @@ function App() {
         <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 px-4 py-4 md:px-6">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
-              <p className="text-sm font-semibold text-emerald-700">LearnEnglish</p>
+              <p className="text-sm font-semibold text-emerald-700">EnglishHub</p>
               <h1 className="mt-1 text-3xl font-bold text-zinc-950 md:text-4xl">Hôm nay học {headerTopicLabel} · {headerLevelLabel}</h1>
             </div>
             <div className="flex items-center gap-3">
@@ -634,6 +634,41 @@ function emptySkillProgress() {
   return { ...defaultSkillProgress }
 }
 
+function fallbackRecommendation() {
+  return {
+    actions: [],
+    learningLoop: [],
+    nextAction: {
+      detail: 'Bắt đầu bằng một vòng học từ vựng, nghe, đọc và quiz để EnglishHub có dữ liệu cá nhân hóa.',
+      targetTab: 'vocabulary',
+      title: 'Bắt đầu học từ mới',
+      type: 'vocabulary',
+    },
+    weakSkill: {
+      reason: 'Chưa có đủ dữ liệu trong tài khoản này.',
+      score: 0,
+      skill: 'vocabulary',
+      targetTab: 'vocabulary',
+    },
+    weakTopic: {
+      label: 'Chưa đủ dữ liệu',
+      reason: 'Hoàn thành vài bài học để hệ thống nhận diện chủ đề yếu.',
+      topicSlug: '',
+    },
+  }
+}
+
+function fallbackDailyChallenge() {
+  return {
+    date: '',
+    listening: null,
+    miniQuiz: null,
+    reading: null,
+    topic: { label: 'Chưa đủ dữ liệu', topicSlug: '' },
+    words: [],
+  }
+}
+
 function sortLevelCodes(values) {
   return Array.from(new Set(Array.from(values || []).filter(Boolean))).sort((left, right) => {
     const leftIndex = cefrLevelOrder.indexOf(left)
@@ -685,6 +720,7 @@ function buildDisplayTopics(sourceTopics, words) {
 
 function buildHomeData({ activeListening, activeQuiz, difficultWords, listeningCompletedCount, placementResult, plans, readingCompletedCount, savedWords, selectedLevel, selectedTopic, topics, userProgress, words }) {
   const accountStats = userProgress.stats || {}
+  const recommendations = accountStats.recommendations || fallbackRecommendation()
   const scopedWords = words.filter((word) => {
     const matchesTopic = selectedTopic === 'all' || word.topicSlug === selectedTopic
     const matchesLevel = selectedLevel === 'all' || word.level === selectedLevel
@@ -740,6 +776,8 @@ function buildHomeData({ activeListening, activeQuiz, difficultWords, listeningC
       },
     ],
     levelProgress: accountStats.levelProgress || { A1: 0, A2: 0, B1: 0, B2: 0 },
+    dailyChallenge: accountStats.dailyChallenge || fallbackDailyChallenge(),
+    recommendations,
     recommendedListening: {
       duration: activeListening?.duration || '',
       level: activeListening?.level || levelLabel,
@@ -932,7 +970,7 @@ function AuthScreen({ authForm, authMessage, authMode, setAuthMode, submitAuth, 
     <div className="min-h-screen bg-[#F7FAF8] px-4 py-8 text-zinc-900">
       <main className="mx-auto grid min-h-[calc(100vh-4rem)] w-full max-w-6xl items-center gap-6 lg:grid-cols-[0.85fr_1.15fr]">
         <section>
-          <p className="text-sm font-semibold text-emerald-700">LearnEnglish</p>
+          <p className="text-sm font-semibold text-emerald-700">EnglishHub</p>
           <h1 className="mt-2 text-4xl font-bold text-zinc-950 md:text-5xl">Đăng nhập để bắt đầu học</h1>
           <p className="mt-4 max-w-xl text-zinc-700">
             Tài khoản sẽ mở đúng không gian học của bạn. Admin vào thẳng trang quản trị, học viên vào trang học cá nhân.
@@ -1026,6 +1064,8 @@ function Dashboard({ data, difficultWords, setActiveTab, user }) {
               </div>
             ))}
           </div>
+          <SmartRecommendation data={data.recommendations} setActiveTab={setActiveTab} />
+          <DailyChallenge challenge={data.dailyChallenge} setActiveTab={setActiveTab} />
           <div className="mt-5 rounded-md border border-zinc-200 bg-[#FBFDFC] p-4">
             <p className="text-sm font-semibold text-emerald-700">Bài nghe theo từ vừa học</p>
             <h3 className="mt-1 text-xl font-bold">{data.recommendedListening.title}</h3>
@@ -1084,6 +1124,86 @@ function Dashboard({ data, difficultWords, setActiveTab, user }) {
         <ProfileSummary dashboardData={data} user={user} />
       </section>
     </>
+  )
+}
+
+function SmartRecommendation({ data, setActiveTab }) {
+  const recommendation = data || fallbackRecommendation()
+  const actions = recommendation.actions?.length ? recommendation.actions : [recommendation.nextAction]
+
+  return (
+    <div className="mt-5 rounded-lg border border-emerald-200 bg-emerald-50 p-4">
+      <p className="text-sm font-semibold text-emerald-800">Gợi ý thông minh</p>
+      <div className="mt-2 grid gap-4 lg:grid-cols-[0.8fr_1.2fr]">
+        <div>
+          <h3 className="text-2xl font-bold text-zinc-950">{recommendation.nextAction?.title || 'Bắt đầu học từ mới'}</h3>
+          <p className="mt-2 text-sm text-zinc-700">{recommendation.nextAction?.detail || 'Hoàn thành một vòng học để hệ thống có thêm dữ liệu.'}</p>
+          <div className="mt-3 grid gap-2 text-sm">
+            <Info label="Kỹ năng cần ưu tiên" value={`${recommendation.weakSkill?.skill || 'vocabulary'} · ${recommendation.weakSkill?.score || 0}%`} />
+            <Info label="Chủ đề cần chú ý" value={recommendation.weakTopic?.label || 'Chưa đủ dữ liệu'} />
+          </div>
+          <button className="mt-4 rounded-md bg-emerald-700 px-4 py-2 font-semibold text-white" onClick={() => setActiveTab(recommendation.nextAction?.targetTab || 'vocabulary')} type="button">
+            Học mục này
+          </button>
+        </div>
+        <div className="grid gap-2">
+          {actions.map((action, index) => (
+            <button className="rounded-md border border-emerald-200 bg-white px-3 py-2 text-left hover:border-emerald-600" key={`${action.title}-${index}`} onClick={() => setActiveTab(action.targetTab || 'vocabulary')} type="button">
+              <span className="text-xs font-semibold uppercase text-emerald-700">Ưu tiên {index + 1}</span>
+              <span className="mt-1 block font-bold">{action.title}</span>
+              <span className="mt-1 block text-sm text-zinc-600">{action.detail}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function DailyChallenge({ challenge, setActiveTab }) {
+  const data = challenge || fallbackDailyChallenge()
+
+  return (
+    <div className="mt-5 rounded-lg border border-cyan-200 bg-cyan-50 p-4">
+      <p className="text-sm font-semibold text-cyan-800">Daily Challenge</p>
+      <div className="mt-2 flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+        <div>
+          <h3 className="text-2xl font-bold text-zinc-950">Thử thách hôm nay · {data.topic?.label || 'Chưa đủ dữ liệu'}</h3>
+          <p className="mt-1 text-sm text-zinc-700">5 từ, 1 bài nghe ngắn, 1 câu đọc hiểu và 1 mini quiz.</p>
+        </div>
+        <span className="rounded-md bg-white px-3 py-2 text-sm font-semibold text-cyan-900">{data.date || 'Hôm nay'}</span>
+      </div>
+      <div className="mt-4 grid gap-3 lg:grid-cols-4">
+        <div className="rounded-md border border-cyan-100 bg-white p-3">
+          <p className="text-xs font-semibold uppercase text-cyan-700">5 từ</p>
+          <div className="mt-2 space-y-1">
+            {(data.words || []).length === 0 && <p className="text-sm text-zinc-600">Hoàn thành vài bài để có từ gợi ý.</p>}
+            {(data.words || []).map((word) => (
+              <p className="text-sm font-semibold" key={word.id}>{word.term} <span className="font-normal text-zinc-500">· {word.meaningVi}</span></p>
+            ))}
+          </div>
+          <button className="mt-3 rounded-md border border-zinc-300 px-3 py-2 text-sm font-semibold" onClick={() => setActiveTab('vocabulary')} type="button">
+            Học từ
+          </button>
+        </div>
+        <ChallengeCard action="Nghe bài" detail={data.listening ? `${data.listening.level} · ${data.listening.duration || 'ngắn'}` : 'Chưa có bài nghe'} onClick={() => setActiveTab('listening')} title={data.listening?.title || 'Listening ngắn'} />
+        <ChallengeCard action="Đọc bài" detail={data.reading?.question || 'Đọc đoạn ngắn và chọn ý đúng.'} onClick={() => setActiveTab('reading')} title={data.reading?.title || 'Reading ngắn'} />
+        <ChallengeCard action="Làm quiz" detail={data.miniQuiz ? `${data.miniQuiz.level} · ${data.miniQuiz.questionCount} câu` : 'Mini quiz theo chủ đề'} onClick={() => setActiveTab('quiz')} title={data.miniQuiz?.title || 'Mini quiz'} />
+      </div>
+    </div>
+  )
+}
+
+function ChallengeCard({ action, detail, onClick, title }) {
+  return (
+    <div className="rounded-md border border-cyan-100 bg-white p-3">
+      <p className="text-xs font-semibold uppercase text-cyan-700">{action}</p>
+      <h4 className="mt-2 font-bold">{title}</h4>
+      <p className="mt-1 text-sm text-zinc-600">{detail}</p>
+      <button className="mt-3 rounded-md border border-zinc-300 px-3 py-2 text-sm font-semibold" onClick={onClick} type="button">
+        Bắt đầu
+      </button>
+    </div>
   )
 }
 
@@ -1967,6 +2087,7 @@ function Saved({ savedWords, difficultWords, filter, recentWords, reviewQueueWor
 function Stats({ accountStats, reviewWords, speak, toggleWord, user }) {
   const stats = accountStats || {}
   const skillProgress = stats.skillProgress || emptySkillProgress()
+  const recommendations = stats.recommendations || fallbackRecommendation()
 
   return (
     <section className="grid gap-6 lg:grid-cols-2">
@@ -1987,6 +2108,33 @@ function Stats({ accountStats, reviewWords, speak, toggleWord, user }) {
         </div>
         <SkillProgress skillProgress={skillProgress} />
         <LevelProgress levelProgress={stats.levelProgress || { A1: 0, A2: 0, B1: 0, B2: 0 }} />
+        <div className="rounded-lg border border-zinc-200 bg-white p-5">
+          <p className="text-sm font-semibold text-emerald-700">Quyết định học tập</p>
+          <h2 className="mt-2 text-2xl font-bold">{recommendations.nextAction?.title || 'Bắt đầu học từ mới'}</h2>
+          <p className="mt-2 text-zinc-700">{recommendations.nextAction?.detail || 'Hoàn thành vài hoạt động để hệ thống cá nhân hóa tốt hơn.'}</p>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <Info label="Kỹ năng yếu nhất" value={`${recommendations.weakSkill?.skill || 'vocabulary'} · ${recommendations.weakSkill?.score || 0}%`} />
+            <Info label="Lý do" value={recommendations.weakSkill?.reason || 'Chưa đủ dữ liệu.'} />
+            <Info label="Chủ đề yếu nhất" value={recommendations.weakTopic?.label || 'Chưa đủ dữ liệu'} />
+            <Info label="Tín hiệu" value={recommendations.weakTopic?.reason || 'Cần thêm dữ liệu học tập.'} />
+          </div>
+        </div>
+        <div className="rounded-lg border border-zinc-200 bg-white p-5">
+          <p className="text-sm font-semibold text-cyan-700">Vòng học cá nhân hóa</p>
+          <div className="mt-5 grid gap-2">
+            {(recommendations.learningLoop || []).map((step, index) => (
+              <div className="flex items-center justify-between rounded-md border border-zinc-200 bg-[#FBFDFC] px-3 py-2" key={step.step}>
+                <span>
+                  <span className="text-xs font-semibold text-zinc-500">Bước {index + 1}</span>
+                  <span className="block font-bold">{step.step}</span>
+                </span>
+                <span className={`rounded-md px-2 py-1 text-xs font-semibold ${step.done ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-900'}`}>
+                  {step.done ? 'Đã có dữ liệu' : 'Nên làm'}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
       <div className="rounded-lg border border-zinc-200 bg-white p-5">
         <p className="text-sm font-semibold text-rose-700">Lịch ôn thông minh</p>

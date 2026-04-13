@@ -17,8 +17,8 @@ const router = express.Router();
 const users = [
   {
     id: 'admin-demo',
-    email: 'admin@learnenglish.local',
-    name: 'Admin LearnEnglish',
+    email: 'admin@englishhub.local',
+    name: 'Admin EnglishHub',
     role: 'admin',
     level: 'B2',
     goal: 'Quản trị',
@@ -457,6 +457,155 @@ function addAutoQuizQuestions(words, topicSlug, level) {
   return { quizId: quiz.id, added };
 }
 
+function storedProgressRows() {
+  const progress = readDemoStore().collections?.progress;
+  return Array.isArray(progress) ? progress : [];
+}
+
+function average(values) {
+  const numbers = values.map(Number).filter((value) => Number.isFinite(value));
+  if (!numbers.length) return 0;
+  return Math.round(numbers.reduce((sum, value) => sum + value, 0) / numbers.length);
+}
+
+function wordById(wordId) {
+  return vocabulary.find((word) => word.id === wordId) || null;
+}
+
+function quizById(quizId) {
+  return quizzes.find((quiz) => quiz.id === quizId) || null;
+}
+
+function lessonById(type, lessonId) {
+  const lessons = type === 'reading' ? readingLessons : listeningLessons;
+  return lessons.find((lesson) => lesson.id === lessonId) || null;
+}
+
+function increment(map, key, amount = 1) {
+  if (!key) return;
+  map.set(key, (map.get(key) || 0) + amount);
+}
+
+function contentQualityDashboard() {
+  const progressRows = storedProgressRows();
+  const quizAttempts = progressRows.flatMap((progress) => progress.quizHistory || []);
+  const practiceAttempts = progressRows.flatMap((progress) => progress.practiceHistory || []);
+  const difficultCounts = new Map();
+  const topicStudyCounts = new Map();
+
+  progressRows.forEach((progress) => {
+    (progress.difficult || []).forEach((wordId) => {
+      const word = wordById(wordId);
+      increment(difficultCounts, wordId);
+      increment(topicStudyCounts, word?.topicSlug);
+    });
+    (progress.reviewQueue || []).forEach((wordId) => {
+      const word = wordById(wordId);
+      increment(difficultCounts, wordId);
+      increment(topicStudyCounts, word?.topicSlug);
+    });
+    (progress.remembered || []).forEach((wordId) => increment(topicStudyCounts, wordById(wordId)?.topicSlug));
+    (progress.favorites || []).forEach((wordId) => increment(topicStudyCounts, wordById(wordId)?.topicSlug));
+    (progress.quizHistory || []).forEach((attempt) => {
+      const quiz = quizById(attempt.quizId);
+      increment(topicStudyCounts, quiz?.topicSlug);
+      (attempt.wrongWordIds || []).forEach((wordId) => {
+        increment(difficultCounts, wordId);
+        increment(topicStudyCounts, wordById(wordId)?.topicSlug);
+      });
+      (attempt.wrongItems || []).forEach((item) => {
+        if (!item.wordId) return;
+        increment(difficultCounts, item.wordId);
+        increment(topicStudyCounts, wordById(item.wordId)?.topicSlug);
+      });
+    });
+    (progress.practiceHistory || []).forEach((attempt) => {
+      increment(topicStudyCounts, lessonById(attempt.type, attempt.lessonId)?.topicSlug);
+    });
+  });
+
+  const quizQuality = quizzes.map((quiz) => {
+    const attempts = quizAttempts.filter((attempt) => attempt.quizId === quiz.id);
+    const averageScore = average(attempts.map((attempt) => attempt.score));
+    const difficulty = attempts.length === 0
+      ? 'Chưa có dữ liệu'
+      : averageScore >= 90
+        ? 'Quá dễ'
+        : averageScore < 60
+          ? 'Quá khó'
+          : 'Ổn định';
+
+    return {
+      id: quiz.id,
+      title: quiz.titleVi || quiz.title,
+      topicSlug: quiz.topicSlug,
+      level: quiz.level,
+      attempts: attempts.length,
+      averageScore,
+      difficulty,
+    };
+  });
+
+  const lessonQuality = [...listeningLessons.map((lesson) => ({ ...lesson, type: 'listening' })), ...readingLessons.map((lesson) => ({ ...lesson, type: 'reading' }))].map((lesson) => {
+    const attempts = practiceAttempts.filter((attempt) => attempt.type === lesson.type && attempt.lessonId === lesson.id);
+    const averageScore = average(attempts.map((attempt) => attempt.score));
+
+    return {
+      id: lesson.id,
+      type: lesson.type,
+      title: lesson.titleVi || lesson.title,
+      topicSlug: lesson.topicSlug,
+      level: lesson.level,
+      attempts: attempts.length,
+      averageScore,
+      signal: attempts.length === 0 ? 'Chưa có dữ liệu' : averageScore < 60 ? 'Tỷ lệ đúng thấp' : averageScore >= 90 ? 'Có thể quá dễ' : 'Ổn định',
+    };
+  });
+
+  const difficultWords = [...difficultCounts.entries()]
+    .map(([wordId, count]) => {
+      const word = wordById(wordId);
+      return word ? {
+        id: word.id,
+        term: word.term,
+        meaningVi: word.meaningVi,
+        topicSlug: word.topicSlug,
+        level: word.level,
+        count,
+      } : null;
+    })
+    .filter(Boolean)
+    .sort((left, right) => right.count - left.count)
+    .slice(0, 10);
+
+  const topicCoverage = topics.map((topic) => ({
+    topicSlug: topic.slug,
+    label: topic.nameVi || topic.name || topic.slug,
+    studyCount: topicStudyCounts.get(topic.slug) || 0,
+    wordCount: vocabulary.filter((word) => word.topicSlug === topic.slug).length,
+  })).sort((left, right) => left.studyCount - right.studyCount);
+
+  return {
+    summary: {
+      progressUsers: progressRows.length,
+      quizAttempts: quizAttempts.length,
+      practiceAttempts: practiceAttempts.length,
+      trackedAbandonment: false,
+    },
+    lowAccuracyLessons: lessonQuality.filter((lesson) => lesson.attempts > 0 && lesson.averageScore < 60).slice(0, 10),
+    quizQuality: quizQuality
+      .filter((quiz) => quiz.attempts > 0 || quiz.difficulty !== 'Ổn định')
+      .sort((left, right) => left.averageScore - right.averageScore)
+      .slice(0, 12),
+    difficultWords,
+    underStudiedTopics: topicCoverage.slice(0, 8),
+    abandonment: {
+      note: 'Chưa có event start/abandon cho bài học, nên dashboard chưa thể tính bỏ dở thật. Cần log lesson_started và lesson_exited trước khi trả lời câu hỏi.',
+      items: [],
+    },
+  };
+}
+
 router.get('/summary', (_req, res) => {
   syncUsersFromAuthStore();
 
@@ -474,6 +623,10 @@ router.get('/summary', (_req, res) => {
       importLogs: importLogs.length,
     },
   });
+});
+
+router.get('/quality-dashboard', (_req, res) => {
+  return res.json({ dashboard: contentQualityDashboard() });
 });
 
 router.post('/uploads/signature', (req, res) => {

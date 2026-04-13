@@ -26,6 +26,7 @@ Các thay đổi admin/import trong demo mode được lưu ở `storage/demo-da
 - `GET /api/learning/quizzes`
 - `GET /api/learning/dashboard`
 - `GET /api/admin/summary`
+- `GET /api/admin/quality-dashboard`
 - `GET/POST/PATCH/DELETE /api/admin/topics`
 - `GET/POST/PATCH/DELETE /api/admin/vocabulary`
 - `POST /api/admin/vocabulary/bulk/preview`
@@ -40,7 +41,7 @@ Các thay đổi admin/import trong demo mode được lưu ở `storage/demo-da
 
 ## Admin demo và Cloudinary
 
-Demo mode có sẵn `admin@learnenglish.local / admin123`.
+Demo mode có sẵn `admin@englishhub.local / admin123`.
 
 Để bật Cloudinary signed upload, thêm vào `.env`:
 
@@ -49,3 +50,17 @@ CLOUDINARY_CLOUD_NAME=
 CLOUDINARY_API_KEY=
 CLOUDINARY_API_SECRET=
 ```
+
+## Test
+
+Backend dùng Node test runner:
+
+```bash
+npm run test:unit
+npm run test:integration
+npm run test:system
+npm run test:acceptance
+npm test
+```
+
+Các test dùng `DEMO_STORE_PATH` tạm trong thư mục hệ thống nên không ghi đè `storage/demo-data.json` local.

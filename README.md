@@ -1,6 +1,6 @@
-# LearnEnglish
+# EnglishHub
 
-LearnEnglish là web học tiếng Anh theo flow cá nhân hóa: chọn chủ đề, học từ vựng, luyện nghe, luyện đọc, làm quiz, lưu từ khó và xem thống kê theo từng tài khoản.
+EnglishHub là web học tiếng Anh theo flow cá nhân hóa: chọn chủ đề, học từ vựng, luyện nghe, luyện đọc, làm quiz, lưu từ khó và xem thống kê theo từng tài khoản.
 
 Ứng dụng hiện là MVP/full demo chạy local với React, Vite, Tailwind CSS, Express, JWT auth và dữ liệu mẫu. Nội dung học, dữ liệu admin và progress tài khoản của MVP được lưu vào demo store JSON để không mất dữ liệu sau khi restart.
 
@@ -42,7 +42,9 @@ LearnEnglish là web học tiếng Anh theo flow cá nhân hóa: chọn chủ đ
 - Quiz có danh sách quiz riêng, lọc theo cấp độ và chọn từng quiz thay vì chỉ làm một bộ câu hỏi cố định.
 - Quiz chấm điểm, xem giải thích, review câu sai và đưa từ sai vào lịch ôn.
 - Lộ trình học theo ngày.
+- Daily Challenge mỗi ngày gồm 5 từ, 1 bài nghe ngắn, 1 câu đọc hiểu và 1 mini quiz.
 - Thống kê theo tài khoản: từ đã học, từ cần ôn, quiz đã làm, điểm quiz gần nhất, bài nghe/bài đọc hoàn thành, chuỗi ngày học, XP, tiến độ kỹ năng và tiến độ CEFR.
+- Smart Learning Engine gợi ý kỹ năng yếu, chủ đề cần chú ý, hành động học tiếp theo và vòng học cá nhân hóa.
 
 ### Admin
 
@@ -54,6 +56,7 @@ LearnEnglish là web học tiếng Anh theo flow cá nhân hóa: chọn chủ đ
 - Quản lý câu hỏi quiz với đáp án, lựa chọn, giải thích, từ liên quan, mục cần ôn và kỹ năng.
 - Cloudinary signed upload cho ảnh từ vựng/avatar và metadata cho audio/tài liệu.
 - Nội dung admin trong demo mode được lưu vào `server/storage/demo-data.json`.
+- Content Quality Dashboard cho admin xem quiz quá dễ/quá khó, bài có tỷ lệ đúng thấp, từ hay bị đánh dấu khó và chủ đề ít được học.
 
 ## Công nghệ
 
@@ -140,7 +143,7 @@ npm run dev:server
 Trong demo mode có sẵn tài khoản admin:
 
 ```text
-Email: admin@learnenglish.local
+Email: admin@englishhub.local
 Password: admin123
 ```
 
@@ -155,7 +158,7 @@ PORT=5000
 CLIENT_URL=http://localhost:5173
 JWT_SECRET=change_this_to_a_long_random_secret
 JWT_EXPIRES_IN=7d
-ADMIN_EMAILS=admin@learnenglish.local
+ADMIN_EMAILS=admin@englishhub.local
 ADMIN_DEMO_PASSWORD=admin123
 
 DB_HOST=
@@ -323,6 +326,18 @@ Tab `Thống kê` hiển thị theo tài khoản đang đăng nhập:
 - Tiến độ kỹ năng: vocabulary, listening, reading, quiz.
 - Tiến độ CEFR: A1, A2, B1, B2.
 - Lịch ôn thông minh từ lỗi quiz và từ khó của tài khoản.
+- Gợi ý học tiếp theo dựa trên kỹ năng yếu nhất và chủ đề yếu nhất.
+
+### Daily Challenge
+
+Daily Challenge được sinh từ progress của tài khoản:
+
+- 5 từ ưu tiên từ reviewQueue hoặc chủ đề đang yếu.
+- 1 bài Listening ngắn chưa hoàn thành.
+- 1 bài Reading kèm câu hỏi đọc hiểu.
+- 1 mini quiz theo chủ đề cần chú ý.
+
+Mục tiêu là giữ vòng học nhỏ, dễ hoàn thành mỗi ngày.
 
 ## Trang Admin
 
@@ -436,6 +451,7 @@ Các action hỗ trợ:
 Yêu cầu JWT admin:
 
 - `GET /api/admin/summary`
+- `GET /api/admin/quality-dashboard`
 - `GET /api/admin/uploads/policy`
 - `POST /api/admin/uploads/signature`
 - `GET /api/admin/quiz-questions`
@@ -486,18 +502,30 @@ npm test --prefix server
 
 ## Kiểm thử
 
-Các lệnh đã dùng để kiểm tra:
+Backend hiện có test tự động bằng Node test runner, chia theo lớp:
+
+```bash
+npm run test:unit
+npm run test:integration
+npm run test:system
+npm run test:acceptance
+npm test
+```
+
+Ý nghĩa từng lớp:
+
+- Unit test: kiểm tra data seed, số lượng bài, độ đa dạng câu hỏi và cấu trúc quiz.
+- Integration test: kiểm tra progress API lưu word signals, quiz attempts, practice attempts và recommendation theo tài khoản.
+- System test: smoke test public learning API, protected admin API, health check và 404.
+- Acceptance test: mô phỏng learner hoàn thành Daily Challenge rồi admin xem Content Quality Dashboard.
+- Tự test/smoke check: chạy lint, build, test và gọi thử API chính.
+
+Các lệnh kiểm tra tổng thường dùng:
 
 ```bash
 npm run lint --prefix client
 npm run build --prefix client
 npm test --prefix server
-```
-
-Hiện backend test vẫn là placeholder:
-
-```text
-No backend tests configured yet
 ```
 
 ## Ghi chú vận hành

@@ -16,10 +16,10 @@ function configureCloudinary() {
 
 function categoryConfig(category) {
   const configs = {
-    vocabulary_image: { folder: 'learnenglish/vocabulary', resourceType: 'image' },
-    avatar: { folder: 'learnenglish/avatars', resourceType: 'image' },
-    listening_audio: { folder: 'learnenglish/listening-audio', resourceType: 'video' },
-    learning_document: { folder: 'learnenglish/documents', resourceType: 'raw' },
+    vocabulary_image: { folder: 'englishhub/vocabulary', resourceType: 'image' },
+    avatar: { folder: 'englishhub/avatars', resourceType: 'image' },
+    listening_audio: { folder: 'englishhub/listening-audio', resourceType: 'video' },
+    learning_document: { folder: 'englishhub/documents', resourceType: 'raw' },
   };
 
   return configs[category] || configs.vocabulary_image;

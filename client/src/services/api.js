@@ -1,5 +1,5 @@
 const API_BASE = import.meta.env.VITE_API_URL || '/api'
-export const TOKEN_KEY = 'learnenglish_token'
+export const TOKEN_KEY = 'englishhub_token'
 
 export function getAuthToken() {
   return localStorage.getItem(TOKEN_KEY)

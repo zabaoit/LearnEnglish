@@ -1,7 +1,7 @@
 {
-  "name": "learnenglish",
+  "name": "englishhub",
   "version": "1.0.0",
-  "description": "LearnEnglish vocabulary, listening, reading, quiz MVP with React, Tailwind, Express, MySQL and JWT auth.",
+  "description": "EnglishHub vocabulary, listening, reading, quiz MVP with React, Tailwind, Express, MySQL and JWT auth.",
   "private": true,
   "scripts": {
     "dev": "concurrently \"npm run dev --prefix server\" \"npm run dev --prefix client\"",
@@ -9,7 +9,11 @@
     "dev:server": "npm run dev --prefix server",
     "build": "npm run build --prefix client",
     "lint": "npm run lint --prefix client",
-    "test": "npm run test --prefix server"
+    "test": "npm run test --prefix server",
+    "test:acceptance": "npm run test:acceptance --prefix server",
+    "test:integration": "npm run test:integration --prefix server",
+    "test:system": "npm run test:system --prefix server",
+    "test:unit": "npm run test:unit --prefix server"
   },
   "keywords": [],
   "author": "",

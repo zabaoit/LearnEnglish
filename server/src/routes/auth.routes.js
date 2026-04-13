@@ -12,7 +12,7 @@ const { hydrateDemoCollections, saveDemoCollections } = require('../services/dem
 
 const router = express.Router();
 const memoryUsers = new Map();
-const defaultAdminEmails = (process.env.ADMIN_EMAILS || 'admin@learnenglish.local')
+const defaultAdminEmails = (process.env.ADMIN_EMAILS || 'admin@englishhub.local')
   .split(',')
   .map((email) => email.trim().toLowerCase())
   .filter(Boolean);
@@ -20,8 +20,8 @@ const defaultAdminEmails = (process.env.ADMIN_EMAILS || 'admin@learnenglish.loca
 const authUsers = [
   {
   id: 'admin-demo',
-  email: 'admin@learnenglish.local',
-  name: 'Admin LearnEnglish',
+  email: 'admin@englishhub.local',
+  name: 'Admin EnglishHub',
   password_hash: bcrypt.hashSync(process.env.ADMIN_DEMO_PASSWORD || 'admin123', 12),
   role: 'admin',
   goal: 'Quản trị',

@@ -3,12 +3,15 @@ const express = require('express');
 const { requireAdmin, requireAuth } = require('../middleware/auth');
 const {
   adminModules,
+  dailyPlans,
   dashboard,
   goals,
   levels,
   listeningLessons,
+  placementQuestions,
   quizzes,
   readingLessons,
+  reviewSignals,
   roadmap,
   topics,
   vocabulary,
@@ -63,6 +66,16 @@ router.get('/listening', (req, res) => res.json({ lessons: byFilters(listeningLe
 router.get('/reading', (req, res) => res.json({ lessons: byFilters(readingLessons, req.query) }));
 router.get('/quizzes', (req, res) => res.json({ quizzes: byFilters(quizzes, req.query) }));
 router.get('/roadmap', (_req, res) => res.json({ roadmap }));
+router.get('/placement', (_req, res) => res.json({ questions: placementQuestions }));
+router.get('/daily-plan', (_req, res) => res.json({ plans: dailyPlans }));
+router.get('/review-signals', (_req, res) => {
+  const signals = reviewSignals.map((signal) => ({
+    ...signal,
+    word: vocabulary.find((word) => word.id === signal.wordId) || null,
+  }));
+
+  return res.json({ signals });
+});
 
 router.get('/vocabulary/:id', (req, res) => {
   const word = vocabulary.find((item) => item.id === req.params.id);

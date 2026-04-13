@@ -195,6 +195,258 @@ const vocabulary = [
   },
 ];
 
+function topicWords(topicSlug) {
+  const words = vocabulary.filter((word) => word.topicSlug === topicSlug);
+  return words.length ? words : vocabulary.slice(0, 2);
+}
+
+function durationFor(index) {
+  const minutes = 1 + (index % 4);
+  const seconds = String(15 + ((index * 7) % 45)).padStart(2, '0');
+  return `0${minutes}:${seconds}`;
+}
+
+function generatedTopicPlans() {
+  return [
+    { topicSlug: 'travel', level: 'A2', title: 'Travel context', titleVi: 'Ngữ cảnh du lịch', setting: 'at the station', task: 'confirm the trip plan' },
+    { topicSlug: 'family', level: 'A1', title: 'Family context', titleVi: 'Ngữ cảnh gia đình', setting: 'at home', task: 'talk about a family photo' },
+    { topicSlug: 'work', level: 'B1', title: 'Work context', titleVi: 'Ngữ cảnh công việc', setting: 'in a team meeting', task: 'check the project update' },
+    { topicSlug: 'health', level: 'A2', title: 'Health context', titleVi: 'Ngữ cảnh sức khỏe', setting: 'at the clinic', task: 'make a short appointment' },
+    { topicSlug: 'shopping', level: 'A2', title: 'Shopping context', titleVi: 'Ngữ cảnh mua sắm', setting: 'at the counter', task: 'ask about a purchase' },
+  ];
+}
+
+const settingDistractors = ['at the station', 'at home', 'in a team meeting', 'at the clinic', 'at the counter', 'in a museum', 'on a video call', 'at the airport gate'];
+const taskDistractors = ['confirm the trip plan', 'talk about a family photo', 'check the project update', 'make a short appointment', 'ask about a purchase', 'cancel the plan', 'ignore the message', 'buy a new ticket'];
+const topicDistractors = ['travel', 'family', 'work', 'health', 'shopping'];
+
+function pairLabel(primary, secondary) {
+  return primary.term === secondary.term ? primary.term : `${primary.term} and ${secondary.term}`;
+}
+
+function rotateOptions(options, seed) {
+  if (options.length < 2) return options;
+  const offset = seed % options.length;
+  return [...options.slice(offset), ...options.slice(0, offset)];
+}
+
+function makeOptions(answer, distractors, seed = 0, fallback = vocabulary.map((word) => word.term)) {
+  const options = [...new Set([answer, ...distractors, ...fallback].filter(Boolean))].slice(0, 4);
+  return rotateOptions(options, seed);
+}
+
+function listeningTranscript(plan, primary, secondary, index) {
+  const scripts = [
+    [
+      `We are ${plan.setting} and need to ${plan.task}.`,
+      `Please remember the word ${primary.term} because it appears in this situation.`,
+      `The speaker also mentions ${secondary.term} to complete the message.`,
+      `After listening, choose the detail that matches the context.`,
+    ],
+    [
+      `Listen to a short ${plan.topicSlug} message from ${plan.setting}.`,
+      `The main action is to ${plan.task}.`,
+      `${primary.term} is the key word in the first detail.`,
+      `${secondary.term} gives one more clue for the answer.`,
+    ],
+    [
+      `This audio is about ${plan.topicSlug}.`,
+      `The speaker is ${plan.setting}.`,
+      `The important phrase includes ${primary.term}.`,
+      `A second useful word is ${secondary.term}, so listen for both words.`,
+    ],
+    [
+      `In this situation, someone needs to ${plan.task}.`,
+      `The place is ${plan.setting}, not a different location.`,
+      `The first vocabulary item is ${primary.term}.`,
+      `The final clue is ${secondary.term}.`,
+    ],
+  ];
+
+  return scripts[index % scripts.length];
+}
+
+function listeningQuestions(plan, primary, secondary, index) {
+  const questionSets = [
+    [
+      {
+        prompt: 'Which word is the main focus of the audio?',
+        type: 'single-choice',
+        answer: primary.term,
+        options: makeOptions(primary.term, [secondary.term, 'deadline', 'receipt'], index),
+      },
+      {
+        prompt: 'Where does the listening happen?',
+        type: 'single-choice',
+        answer: plan.setting,
+        options: makeOptions(plan.setting, settingDistractors, index + 1, settingDistractors),
+      },
+    ],
+    [
+      {
+        prompt: 'What does the speaker need to do?',
+        type: 'single-choice',
+        answer: plan.task,
+        options: makeOptions(plan.task, taskDistractors, index, taskDistractors),
+      },
+      {
+        prompt: `Which extra word is mentioned after ${primary.term}?`,
+        type: 'single-choice',
+        answer: secondary.term,
+        options: makeOptions(secondary.term, [primary.term, 'passport', 'receipt'], index + 1),
+      },
+    ],
+    [
+      {
+        prompt: 'Which topic best matches this audio?',
+        type: 'single-choice',
+        answer: plan.topicSlug,
+        options: makeOptions(plan.topicSlug, topicDistractors, index, topicDistractors),
+      },
+      {
+        prompt: 'Which sentence matches the message?',
+        type: 'single-choice',
+        answer: `The speaker mentions ${pairLabel(primary, secondary)}.`,
+        options: makeOptions(`The speaker mentions ${pairLabel(primary, secondary)}.`, ['The speaker only talks about the weather.', 'The speaker asks to skip the lesson.', 'The speaker gives no vocabulary clue.'], index + 2, []),
+      },
+    ],
+    [
+      {
+        prompt: 'Which detail should you listen for first?',
+        type: 'single-choice',
+        answer: primary.term,
+        options: makeOptions(primary.term, [secondary.term, 'clinic', 'counter'], index + 3),
+      },
+      {
+        prompt: 'Which action matches the audio?',
+        type: 'single-choice',
+        answer: plan.task,
+        options: makeOptions(plan.task, taskDistractors, index + 4, taskDistractors),
+      },
+    ],
+  ];
+
+  return questionSets[index % questionSets.length];
+}
+
+function readingContent(plan, primary, secondary, index) {
+  const contents = [
+    `This short ${plan.topicSlug} note happens ${plan.setting}. The learner needs to ${plan.task}. The key word is ${primary.term}, and the second useful word is ${secondary.term}. Read the note carefully and choose the detail that matches the situation.`,
+    `A learner reads a ${plan.topicSlug} note ${plan.setting}. The note says to ${plan.task}. It highlights ${primary.term} first, then adds ${secondary.term} as a supporting word.`,
+    `The message is connected to ${plan.topicSlug}. It takes place ${plan.setting}, where someone needs to ${plan.task}. The two words to notice are ${pairLabel(primary, secondary)}.`,
+    `In this reading, the situation is ${plan.setting}. The main task is to ${plan.task}. Look for ${primary.term} in the first detail and ${secondary.term} in the next clue.`,
+  ];
+
+  return contents[index % contents.length];
+}
+
+function readingQuestions(plan, primary, secondary, index) {
+  const questionSets = [
+    [
+      {
+        prompt: 'Which word is the key word in the note?',
+        answer: primary.term,
+        options: makeOptions(primary.term, [secondary.term, 'appointment', 'colleague'], index),
+      },
+      {
+        prompt: 'What should the learner do?',
+        answer: plan.task,
+        options: makeOptions(plan.task, taskDistractors, index + 1, taskDistractors),
+      },
+    ],
+    [
+      {
+        prompt: 'Where does the note happen?',
+        answer: plan.setting,
+        options: makeOptions(plan.setting, settingDistractors, index, settingDistractors),
+      },
+      {
+        prompt: 'Which second useful word appears in the note?',
+        answer: secondary.term,
+        options: makeOptions(secondary.term, [primary.term, 'reservation', 'receipt'], index + 1),
+      },
+    ],
+    [
+      {
+        prompt: 'Which topic is the note about?',
+        answer: plan.topicSlug,
+        options: makeOptions(plan.topicSlug, topicDistractors, index, topicDistractors),
+      },
+      {
+        prompt: 'Which pair of words should the learner notice?',
+        answer: pairLabel(primary, secondary),
+        options: makeOptions(pairLabel(primary, secondary), [`${primary.term} and weather`, `${secondary.term} and museum`, 'ticket and deadline'], index + 2, []),
+      },
+    ],
+    [
+      {
+        prompt: 'What is the main task in the reading?',
+        answer: plan.task,
+        options: makeOptions(plan.task, taskDistractors, index + 3, taskDistractors),
+      },
+      {
+        prompt: 'Which word appears in the first detail?',
+        answer: primary.term,
+        options: makeOptions(primary.term, [secondary.term, 'clinic', 'counter'], index + 4),
+      },
+    ],
+  ];
+
+  return questionSets[index % questionSets.length];
+}
+
+function generateListeningLessons() {
+  const plans = generatedTopicPlans();
+
+  return Array.from({ length: 48 }, (_item, index) => {
+    const plan = plans[index % plans.length];
+    const words = topicWords(plan.topicSlug);
+    const primary = words[index % words.length];
+    const secondary = words[(index + 1) % words.length] || primary;
+    const number = index + 1;
+    const transcript = listeningTranscript(plan, primary, secondary, index);
+
+    return {
+      id: `listen-${plan.topicSlug}-context-${number}`,
+      title: `${plan.title} ${number}`,
+      titleVi: `${plan.titleVi} ${number}`,
+      level: primary.level || plan.level,
+      topicSlug: plan.topicSlug,
+      duration: durationFor(index),
+      audioText: transcript.join(' '),
+      speedOptions: [0.75, 1, 1.25],
+      transcript,
+      newWordIds: [...new Set([primary.id, secondary.id])],
+      questions: listeningQuestions(plan, primary, secondary, index),
+    };
+  });
+}
+
+function generateReadingLessons() {
+  const plans = generatedTopicPlans();
+
+  return Array.from({ length: 48 }, (_item, index) => {
+    const plan = plans[index % plans.length];
+    const words = topicWords(plan.topicSlug);
+    const primary = words[index % words.length];
+    const secondary = words[(index + 1) % words.length] || primary;
+    const number = index + 1;
+    const content = readingContent(plan, primary, secondary, index);
+
+    return {
+      id: `read-${plan.topicSlug}-context-${number}`,
+      title: `${plan.title} reading ${number}`,
+      titleVi: `${plan.titleVi} bài đọc ${number}`,
+      level: primary.level || plan.level,
+      topicSlug: plan.topicSlug,
+      estimatedMinutes: 4 + (index % 5),
+      content,
+      highlightedWordIds: [...new Set([primary.id, secondary.id])],
+      questions: readingQuestions(plan, primary, secondary, index),
+    };
+  });
+}
+
 const listeningLessons = [
   {
     id: 'listen-travel-ticket',
@@ -253,6 +505,7 @@ const listeningLessons = [
       },
     ],
   },
+  ...generateListeningLessons(),
 ];
 
 const readingLessons = [
@@ -297,6 +550,7 @@ const readingLessons = [
       },
     ],
   },
+  ...generateReadingLessons(),
 ];
 
 const quizzes = [
@@ -419,6 +673,103 @@ const roadmap = [
   },
 ];
 
+const placementQuestions = [
+  {
+    prompt: 'Bạn hiểu câu nào tự nhiên nhất để giới thiệu bản thân?',
+    skill: 'Grammar',
+    options: [
+      { label: 'I am Linh. I am from Da Nang.', level: 'A1' },
+      { label: 'I have lived in Da Nang for three years.', level: 'A2' },
+      { label: 'I moved to Da Nang because the job market suited my goals.', level: 'B1' },
+      { label: 'Having relocated to Da Nang, I found the job market aligned with my long-term goals.', level: 'B2' },
+    ],
+  },
+  {
+    prompt: 'Chọn câu thể hiện kế hoạch tương lai rõ nhất.',
+    skill: 'Communication',
+    options: [
+      { label: 'Tomorrow I study English.', level: 'A1' },
+      { label: 'I am going to study English tomorrow evening.', level: 'A2' },
+      { label: 'I plan to review my notes before joining the speaking class.', level: 'B1' },
+      { label: 'I intend to consolidate my notes before participating in the speaking workshop.', level: 'B2' },
+    ],
+  },
+  {
+    prompt: 'Khi đọc email công việc, bạn thoải mái nhất với nội dung nào?',
+    skill: 'Reading',
+    options: [
+      { label: 'Tên người gửi, ngày giờ, lời chào ngắn.', level: 'A1' },
+      { label: 'Lịch họp, địa điểm, việc cần chuẩn bị.', level: 'A2' },
+      { label: 'Cập nhật dự án, hạn chót, phân công nhiệm vụ.', level: 'B1' },
+      { label: 'Quan điểm, rủi ro, đề xuất và lý do thay đổi kế hoạch.', level: 'B2' },
+    ],
+  },
+  {
+    prompt: 'Bạn nghe hiểu tốt nhất kiểu audio nào?',
+    skill: 'Listening',
+    options: [
+      { label: 'Từ đơn và câu chào hỏi chậm.', level: 'A1' },
+      { label: 'Hội thoại ngắn về mua sắm, du lịch, đặt lịch.', level: 'A2' },
+      { label: 'Cuộc trao đổi công việc có vài chi tiết và mốc thời gian.', level: 'B1' },
+      { label: 'Thảo luận có lập luận, ví dụ và quan điểm trái chiều.', level: 'B2' },
+    ],
+  },
+];
+
+const dailyPlans = [
+  {
+    day: 'Hôm nay',
+    title: 'Travel A2',
+    level: 'A2',
+    newWords: 10,
+    reviewWords: 10,
+    focus: 'boarding pass, reservation, itinerary',
+    action: 'Học flashcard rồi làm quiz Travel A2',
+  },
+  {
+    day: 'Ngày mai',
+    title: 'Family A1',
+    level: 'A1',
+    newWords: 5,
+    reviewWords: 10,
+    focus: 'sibling và các từ đã sai hôm nay',
+    action: 'Ôn từ khó trước khi thêm từ mới',
+  },
+  {
+    day: 'Tuần này',
+    title: 'Hoàn thành Family',
+    level: 'A1',
+    newWords: 18,
+    reviewWords: 30,
+    focus: 'từ gia đình, giới thiệu người thân',
+    action: 'Kết thúc bằng mini quiz cuối tuần',
+  },
+];
+
+const reviewSignals = [
+  {
+    wordId: 'travel-itinerary',
+    reason: 'Sai câu chọn nghĩa 2 lần',
+    due: 'Hôm nay',
+    strength: 'weak',
+    nextAction: 'Lật thẻ rồi tự đặt 1 câu với itinerary.',
+  },
+  {
+    wordId: 'work-deadline',
+    reason: 'Hay nhầm collocation meet/miss a deadline',
+    due: 'Hôm nay',
+    strength: 'weak',
+    nextAction: 'Ôn cặp meet a deadline và miss a deadline.',
+  },
+  {
+    wordId: 'health-appointment',
+    reason: 'Chưa nghe lại sau bài listening',
+    due: 'Ngày mai',
+    strength: 'medium',
+    nextAction: 'Nghe phát âm rồi làm câu nghe chọn đáp án.',
+  },
+];
+
 const dashboard = {
   learnedWords: 86,
   reviewWords: 14,
@@ -459,8 +810,11 @@ module.exports = {
   goals,
   levels,
   listeningLessons,
+  dailyPlans,
+  placementQuestions,
   quizzes,
   readingLessons,
+  reviewSignals,
   roadmap,
   topics,
   vocabulary,

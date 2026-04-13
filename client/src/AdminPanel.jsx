@@ -176,6 +176,8 @@ const uploadCategories = [
   { id: 'learning_document', label: 'Tài liệu học' },
 ]
 
+const learningContentResources = new Set(['vocabulary', 'topics', 'levels', 'listening', 'reading', 'quizzes', 'quiz-questions'])
+
 function AdminPanel({ authForm, authMessage, authMode, onLearningContentUpdated, setAuthMode, submitAuth, updateAuthForm, user }) {
   const [activeResource, setActiveResource] = useState('bulk-vocabulary')
   const [items, setItems] = useState([])
@@ -295,7 +297,7 @@ function AdminPanel({ authForm, authMessage, authMode, onLearningContentUpdated,
       setBulkResult(data.result)
       setBulkMessage(`Đã thêm ${data.created.length} từ, cập nhật ${data.updated.length} từ, bỏ qua ${data.skipped.length} từ trùng. Tạo ${data.autoQuiz?.added || 0} câu quiz tự động.`)
       await refreshSummary()
-      await onLearningContentUpdated?.({ topicSlug: bulkTopic, level: bulkLevel, openVocabulary: true })
+      await onLearningContentUpdated?.({ topicSlug: bulkTopic, level: bulkLevel, quizId: data.autoQuiz?.quizId, openVocabulary: true })
     } catch (error) {
       setBulkMessage(error.message)
     }
@@ -317,7 +319,13 @@ function AdminPanel({ authForm, authMessage, authMode, onLearningContentUpdated,
       await refreshItems(resource.id)
       await refreshSummary()
       if (['topics', 'levels'].includes(resource.id)) await refreshBulkTaxonomy()
-      if (['vocabulary', 'topics', 'levels'].includes(resource.id)) await onLearningContentUpdated?.()
+      if (learningContentResources.has(resource.id)) {
+        await onLearningContentUpdated?.({
+          level: payload.level,
+          quizId: payload.quizId || (resource.id === 'quizzes' ? payload.id : ''),
+          topicSlug: payload.topicSlug,
+        })
+      }
     } catch (error) {
       setMessage(error.message)
     }
@@ -332,7 +340,7 @@ function AdminPanel({ authForm, authMessage, authMode, onLearningContentUpdated,
       await refreshItems(resource.id)
       await refreshSummary()
       if (['topics', 'levels'].includes(resource.id)) await refreshBulkTaxonomy()
-      if (['vocabulary', 'topics', 'levels'].includes(resource.id)) await onLearningContentUpdated?.()
+      if (learningContentResources.has(resource.id)) await onLearningContentUpdated?.()
     } catch (error) {
       setMessage(error.message)
     }

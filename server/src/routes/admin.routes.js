@@ -70,6 +70,8 @@ const persistedCollections = {
   importLogs,
 };
 
+const listeningLessonDefaults = listeningLessons.map((lesson) => ({ ...lesson }));
+const readingLessonDefaults = readingLessons.map((lesson) => ({ ...lesson }));
 const quizQuestionDefaults = new Map(
   quizzes.flatMap((quiz) =>
     quiz.questions.map((question) => [
@@ -85,9 +87,19 @@ const quizQuestionDefaults = new Map(
   ),
 );
 
+function restoreMissingLessons(collection, defaults) {
+  const ids = new Set(collection.map((item) => item.id));
+  defaults.forEach((lesson) => {
+    if (!ids.has(lesson.id)) {
+      collection.push(lesson);
+      ids.add(lesson.id);
+    }
+  });
+}
+
 function applyQuizQuestionDefaults() {
   quizzes.forEach((quiz) => {
-    quiz.questions.forEach((question) => {
+    (quiz.questions || []).forEach((question) => {
       const defaults = quizQuestionDefaults.get(`${quiz.id}::${question.prompt}`);
       if (!defaults) return;
       if (!question.explanation && defaults.explanation) question.explanation = defaults.explanation;
@@ -99,7 +111,17 @@ function applyQuizQuestionDefaults() {
   });
 }
 
+function normalizeQuizCollections() {
+  quizzes.forEach((quiz) => {
+    quiz.questions = Array.isArray(quiz.questions) ? quiz.questions : [];
+    quiz.questionCount = quiz.questions.length;
+  });
+}
+
 hydrateDemoCollections(persistedCollections);
+restoreMissingLessons(listeningLessons, listeningLessonDefaults);
+restoreMissingLessons(readingLessons, readingLessonDefaults);
+normalizeQuizCollections();
 applyQuizQuestionDefaults();
 
 const collections = {
@@ -180,25 +202,26 @@ function getIdKey(resource) {
 
 function ensureIdentity(resource, item) {
   const idKey = getIdKey(resource);
-  if (item[idKey]) return item;
 
-  if (resource === 'levels') {
+  if (!item[idKey] && resource === 'levels') {
     item.code = String(item.name || `L${levels.length + 1}`).toUpperCase();
-    return item;
-  }
-
-  if (resource === 'topics') {
+  } else if (!item[idKey] && resource === 'topics') {
     item.slug = slugify(item.name || item.nameVi);
-    return item;
+  } else if (!item[idKey]) {
+    item[idKey] = slugify(item.term || item.title || item.email || item.category || crypto.randomUUID());
   }
 
-  item[idKey] = slugify(item.term || item.title || item.email || item.category || crypto.randomUUID());
+  if (resource === 'quizzes') {
+    item.questions = Array.isArray(item.questions) ? item.questions : [];
+    item.questionCount = item.questions.length || Number(item.questionCount) || 0;
+  }
+
   return item;
 }
 
 function questionRows() {
   return quizzes.flatMap((quiz) =>
-    quiz.questions.map((question, index) => ({
+    (quiz.questions || []).map((question, index) => ({
       ...question,
       id: `${quiz.id}::${index}`,
       quizId: quiz.id,
@@ -583,7 +606,9 @@ router.post('/quiz-questions', (req, res) => {
     reviewType: req.body.reviewType || '',
     skill: req.body.skill || 'Vocabulary',
   };
+  quiz.questions = Array.isArray(quiz.questions) ? quiz.questions : [];
   quiz.questions.push(question);
+  quiz.questionCount = quiz.questions.length;
   persistDemoContent();
 
   return res.status(201).json({ item: { ...question, id: `${quiz.id}::${quiz.questions.length - 1}`, quizId: quiz.id } });
@@ -599,6 +624,7 @@ router.patch('/quiz-questions/:id', (req, res) => {
   }
 
   Object.assign(question, req.body);
+  quiz.questionCount = quiz.questions.length;
   persistDemoContent();
   return res.json({ item: { ...question, id: req.params.id, quizId: quiz.id } });
 });
@@ -612,6 +638,7 @@ router.delete('/quiz-questions/:id', (req, res) => {
   }
 
   const [deleted] = quiz.questions.splice(parsed.index, 1);
+  quiz.questionCount = quiz.questions.length;
   persistDemoContent();
   return res.json({ item: deleted });
 });

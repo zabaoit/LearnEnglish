@@ -55,3 +55,10 @@ export async function saveQuizAttempt(payload) {
     body: JSON.stringify(payload),
   })
 }
+
+export async function savePracticeAttempt(payload) {
+  return apiRequest('/progress/practice-attempts', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}

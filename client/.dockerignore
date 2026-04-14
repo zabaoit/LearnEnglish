@@ -1,0 +1,12 @@
+node_modules
+npm-debug.log*
+.env
+.env.*
+dist
+dist-ssr
+coverage
+.vite
+.cache
+tmp
+temp
+*.log

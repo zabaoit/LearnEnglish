@@ -138,6 +138,40 @@ npm run dev:client
 npm run dev:server
 ```
 
+### Chay bang Docker
+
+Tao `server/.env` tu file mau, sau do them cac key rieng cua ban nhu JWT, Google OAuth va Cloudinary:
+
+```bash
+copy server\.env.example server\.env
+```
+
+Chay toan bo stack:
+
+```bash
+docker compose up --build
+```
+
+Mac dinh Docker expose:
+
+- Frontend: `http://localhost:5173`
+- Backend: `http://localhost:5000`
+- MySQL tu may host: `localhost:3307`
+
+Trong Docker, backend se dung MySQL service noi bo voi database `english_learning`. `server/.env` van duoc nap cho cac key ung dung, nhung cac bien DB duoc override de container noi voi MySQL qua host noi bo `mysql`.
+
+Du lieu duoc giu lai o 2 noi:
+
+- Demo store JSON: `server/storage/demo-data.json` vi `./server` duoc bind mount vao container backend.
+- MySQL: Docker volume `englishhub-mysql-data`.
+
+Schema `server/database/schema.sql` chi duoc MySQL import lan dau khi volume DB con trong. Neu muon reset DB Docker:
+
+```bash
+docker compose down -v
+docker compose up --build
+```
+
 ## Tài khoản demo
 
 Trong demo mode có sẵn tài khoản admin:

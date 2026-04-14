@@ -463,7 +463,7 @@ function App() {
 
   return (
     <div className="min-h-screen bg-[#F7FAF8] text-zinc-900">
-      <header className="border-b border-zinc-200 bg-white">
+      <header className={`border-b border-zinc-200 bg-white ${currentTab === 'dashboard' ? 'sticky top-0 z-50 shadow-sm' : ''}`}>
         <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 px-4 py-4 md:px-6">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>

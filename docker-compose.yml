@@ -1,0 +1,65 @@
+services:
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    environment:
+      MYSQL_DATABASE: english_learning
+      MYSQL_USER: englishhub
+      MYSQL_PASSWORD: englishhub_password
+      MYSQL_ROOT_PASSWORD: englishhub_root_password
+    ports:
+      - "3307:3306"
+    volumes:
+      - englishhub-mysql-data:/var/lib/mysql
+      - ./server/database/schema.sql:/docker-entrypoint-initdb.d/001-schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u$$MYSQL_USER -p$$MYSQL_PASSWORD --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  server:
+    build:
+      context: ./server
+    restart: unless-stopped
+    env_file:
+      - path: ./server/.env
+        required: false
+    environment:
+      PORT: "5000"
+      CLIENT_URL: http://localhost:5173
+      DB_HOST: mysql
+      DB_PORT: "3306"
+      DB_USER: englishhub
+      DB_PASSWORD: englishhub_password
+      DB_NAME: english_learning
+      DEMO_STORE_PATH: /app/storage/demo-data.json
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./server:/app
+      - englishhub-server-node-modules:/app/node_modules
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  client:
+    build:
+      context: ./client
+    restart: unless-stopped
+    command: npm run dev -- --host 0.0.0.0
+    environment:
+      VITE_API_PROXY_TARGET: http://server:5000
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./client:/app
+      - englishhub-client-node-modules:/app/node_modules
+    depends_on:
+      - server
+
+volumes:
+  englishhub-mysql-data:
+  englishhub-server-node-modules:
+  englishhub-client-node-modules:

@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS oauth_accounts (
 
 CREATE TABLE IF NOT EXISTS user_profiles (
   user_id BIGINT UNSIGNED PRIMARY KEY,
-  goal ENUM('Giao tiếp', 'Thi cử', 'Đi làm', 'Du học') NOT NULL DEFAULT 'Giao tiếp',
+  goal VARCHAR(80) NOT NULL DEFAULT 'Giao tiếp',
   current_level VARCHAR(8) NOT NULL DEFAULT 'A1',
   daily_word_target INT NOT NULL DEFAULT 10,
   weekly_listening_target INT NOT NULL DEFAULT 3,

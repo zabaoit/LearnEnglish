@@ -1,0 +1,12 @@
+node_modules
+npm-debug.log*
+.env
+.env.*
+!.env.example
+storage
+coverage
+.nyc_output
+dist
+tmp
+temp
+*.log
